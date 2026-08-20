@@ -16,16 +16,34 @@
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const socket = io();
+        
+        // Avisa ao servidor que este cliente é um simulador (não ocupa vaga de player)
+        const socket = io({
+            query: {
+                type: 'simulator'
+            }
+        });
 
         const paddleW = 10, paddleH = 80;
         let p1_y = 160, p2_y = 160;
         let ball = { x: 300, y: 200, dx: 4, dy: 4, size: 8 };
         let score = { p1: 0, p2: 0 };
 
+        // Definindo a sensibilidade do controle
+        const maxTilt = 20; // Antes era 45. Quanto menor, menos você precisa inclinar.
+
         socket.on('update_simulator', (data) => {
-            let beta = Math.max(-45, Math.min(45, data.beta || 0));
-            let mappedY = ((beta + 45) / 90) * (canvas.height - paddleH);
+            // 1. Pega o valor recebido e inverte o sinal (multiplicando por -1)
+            // Se o movimento ainda ficar contrário ao que você deseja, remova o sinal de menos.
+            let rawBeta = -(data.beta || 0); 
+
+            // 2. Limita o valor entre -maxTilt e +maxTilt (ex: -20 e +20)
+            let beta = Math.max(-maxTilt, Math.min(maxTilt, rawBeta));
+            
+            // 3. Mapeia a angulação para a altura do canvas
+            // Transforma o range de [-20 a 20] para um valor entre [0 e (canvas.height - paddleH)]
+            let mappedY = ((beta + maxTilt) / (maxTilt * 2)) * (canvas.height - paddleH);
+            
             if (data.player === 'Player 1') p1_y = mappedY;
             if (data.player === 'Player 2') p2_y = mappedY;
         });
