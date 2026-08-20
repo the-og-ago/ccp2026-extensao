@@ -1,93 +1,25 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Controle Pong</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #222;
-            color: #fff;
-        }
-        button {
-            padding: 15px 30px;
-            font-size: 18px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        #info {
-            margin-top: 20px;
-            text-align: center;
-            font-size: 20px;
-        }
-    </style>
-</head>
-<body>
 
-    <h1 id="roleDisplay">Conectando...</h1>
-    <button id="startBtn">Ativar Acelerômetro</button>
-    <div id="info">Aguardando permissão...</div>
-
-    <!-- Importa o Socket.io (servido automaticamente pelo backend) -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const startBtn = document.getElementById('startBtn');
-        const info = document.getElementById('info');
-        const roleDisplay = document.getElementById('roleDisplay');
-
-        // Recebe qual jogador este celular é
-        socket.on('role', (role) => {
-            roleDisplay.innerText = role;
-        });
-
-        startBtn.addEventListener('click', () => {
-            // iOS 13+ exige permissão explícita
-            if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-                DeviceOrientationEvent.requestPermission()
-                    .then(permissionState => {
-                        if (permissionState === 'granted') {
-                            startSensing();
-                        } else {
-                            info.innerText = "Permissão negada.";
-                        }
-                    })
-                    .catch(console.error);
-            } else {
-                // Dispositivos Android ou navegadores antigos
-                startSensing();
-            }
-        });
-
-        function startSensing() {
-            startBtn.style.display = 'none';
-            info.innerText = "Lendo sensores...\nIncline o celular!";
-
-            window.addEventListener('deviceorientation', (event) => {
-                // beta: inclinação frente/trás (ideal para mover a raquete no Pong)
-                // gamma: inclinação esquerda/direita
-                const tiltData = {
-                    beta: event.beta,
-                    gamma: event.gamma
-                };
-
-                // Mostra na tela do celular para debug
-                info.innerText = `Beta: ${tiltData.beta?.toFixed(1) || 0}°\nGamma: ${tiltData.gamma?.toFixed(1) || 0}°`;
-
-                // Envia para o servidor NodeJS
-                socket.emit('move', tiltData);
-            });
-        }
-    </script>
-</body>
-</html>
+<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle Pong</title>
+<style>body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #111; color: #fff; margin: 0; } button { padding: 15px 30px; font-size: 18px; background: #28a745; color: #fff; border: none; border-radius: 8px; }</style>
+</head><body>
+<h1 id="role">Conectando...</h1>
+<button id="btn">Ativar Sensores</button>
+<p id="status"></p>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+socket.on('role', r => document.getElementById('role').innerText = r);
+document.getElementById('btn').onclick = () => {
+    if (typeof DeviceOrientationEvent?.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission().then(res => res === 'granted' && start());
+    } else { start(); }
+};
+function start() {
+    document.getElementById('btn').style.display = 'none';
+    window.addEventListener('deviceorientation', e => {
+        document.getElementById('status').innerText = `Beta: ${e.beta?.toFixed(1)}°`;
+        socket.emit('move', { beta: e.beta, gamma: e.gamma });
+    });
+}
+</script></body></html>
